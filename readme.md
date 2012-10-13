@@ -223,7 +223,7 @@ Ahh hell yeah. Notice that it automatically applies the `timestamps()`. A bit op
 You can also specify other options, such as making your `email` field unique, or the `age` field optional - like this:
 
 ```bash
-php artisan generate:migration create_users_table id:integer name:string email_address:string:unique age:integer:nullable
+php artisan generate:migration create_users_table name:string email_address:string:unique age:integer:nullable
 ```
 
 Now we get:
