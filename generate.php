@@ -2,15 +2,15 @@
 
 /**
  * Laravel Generator
- * 
+ *
  * Rapidly create models, views, migrations + schema, assets, tests, etc.
  *
  * USAGE:
  * Add this file to your Laravel application/tasks directory
  * and call the methods with: php artisan generate:[model|controller|migration] [args]
- * 
+ *
  * See individual methods for additional usage instructions.
- * 
+ *
  * @author      Jeffrey Way <jeffrey@jeffrey-way.com>
  * @license     haha - whatever you want.
  * @version     0.8
@@ -51,7 +51,7 @@ class Generate_Task
         // CSS
         'normalize.css' => 'https://raw.github.com/necolas/normalize.css/master/normalize.css'
     );
-    
+
 
     /**
      * Time Savers
@@ -74,7 +74,7 @@ class Generate_Task
     public function run()
     {
         echo <<<EOT
-\n=============GENERATOR COMMANDS=============\n        
+\n=============GENERATOR COMMANDS=============\n
 generate:controller [name] [methods]
 generate:model [name]
 generate:view [name]
@@ -91,12 +91,12 @@ EOT;
      * Generate a controller file with optional actions.
      *
      * USAGE:
-     * 
+     *
      * php artisan generate:controller Admin
      * php artisan generate:controller Admin index edit
      * php artisan generate:controller Admin index index:post restful
-     * 
-     * @param  $args array  
+     *
+     * @param  $args array
      * @return string
      */
     public function controller($args)
@@ -157,7 +157,7 @@ EOT;
      *
      * php artisan generate:model User
      *
-     * @param  $args array  
+     * @param  $args array
      * @return string
      */
     public function model($args)
@@ -195,7 +195,7 @@ EOT;
      * php artisan generate:migration add_user_id_to_posts_table user_id:integer
      * php artisan generate:migration delete_active_from_users_table active:boolean
      *
-     * @param  $args array  
+     * @param  $args array
      * @return string
      */
     public function migration($args)
@@ -253,7 +253,7 @@ EOT;
      *
      * USAGE:
      * php artisan generate:assets style1.css some_module.js
-     * 
+     *
      * @param  $assets array
      * @return void
      */
@@ -317,7 +317,7 @@ EOT;
      * php artisan generate:test membership
      * php artisan generate:test membership can_disable_user can_reset_user_password
      *
-     * @param $args array  
+     * @param $args array
      * @return void
      */
     public function test($args)
@@ -351,7 +351,7 @@ EOT;
             // Only if we're generating a resource.
             if ( isset($this->should_include_tests) ) {
                 $func = Template::test($class_name, $test);
-            }            
+            }
 
             $tests .= $func;
         }
@@ -366,7 +366,7 @@ EOT;
 
     /**
      * Determines whether the asset that the user wants is
-     * contained with the external assets array 
+     * contained with the external assets array
      *
      * @param $assets string
      * @return boolean
@@ -422,7 +422,7 @@ EOT;
 
         /* The Migration Up Function */
         $up = $this->migration_up($table_event, $table_action, $table_name, $args);
-       
+
         /* The Migration Down Function */
         $down = $this->migration_down($table_event, $table_action, $table_name, $args);
 
@@ -479,7 +479,7 @@ EOT;
 
             // add fields to schema
             $schema = $this->add_after('function($table) {', $fields, $schema);
-            
+
             // add schema to down function
             $down = $this->add_after('{', $schema, $down);
         }
@@ -507,7 +507,7 @@ EOT;
     /**
      * Generate resource (model, controller, and views)
      *
-     * @param $args array  
+     * @param $args array
      * @return void
      */
     public function resource($args)
@@ -530,7 +530,7 @@ EOT;
 
         // Singular for everything else
         $resource_name = Str::singular(array_shift($args));
-        
+
         // Should we include tests?
         if ( isset($this->should_include_tests) ) {
             $this->test(array_merge(array(Str::plural($resource_name)), $args));
@@ -550,7 +550,7 @@ EOT;
         }, $args);
 
         $this->view($views);
-        
+
         $this->model($resource_name);
     }
 
@@ -562,7 +562,7 @@ EOT;
      * Or try to grab the very last word that comes after "_" - create_*users*
      * If all else fails, return a generic "TABLE", to be filled in by the user.
      *
-     * @param  $class_name string  
+     * @param  $class_name string
      * @return string
      */
     protected function parse_table_name($class_name)
@@ -591,7 +591,7 @@ EOT;
      *
      * @param  $file_path string
      * @param $content string
-     * @param $type string [model|controller|migration]  
+     * @param $type string [model|controller|migration]
      * @return void
      */
     protected function write_to_file($file_path,  $success = '')
@@ -619,7 +619,7 @@ EOT;
      * Try to determine what type of table action should occur.
      * Add, Create, Delete??
      *
-     * @param  $class_name string  
+     * @param  $class_name string
      * @return aray
      */
     protected function parse_action_type($class_name)
@@ -661,7 +661,7 @@ EOT;
      *
      * Filters through the provided args, and builds up the schema text.
      *
-     * @param  $args array  
+     * @param  $args array
      * @return string
      */
     protected function add_columns($args)
@@ -701,7 +701,7 @@ EOT;
      *
      * Filters through the args and applies the "drop_column" syntax
      *
-     * @param $args array  
+     * @param $args array
      * @return string
      */
     protected function drop_columns($args)
@@ -710,14 +710,14 @@ EOT;
             $bits = explode(':', $val);
             return "'$bits[0]'";
         }, $args);
-       
+
         if ( count($fields) === 1 ) {
             return "\$table->drop_column($fields[0]);";
         } else {
             return "\$table->drop_column(array(" . implode(', ', $fields) . "));";
         }
     }
-    
+
 
     public function path($dir)
     {
@@ -728,7 +728,7 @@ EOT;
     /**
      * Crazy sloppy prettify. TODO - Cleanup
      *
-     * @param  $content string  
+     * @param  $content string
      * @return string
      */
     protected function prettify()
@@ -773,7 +773,7 @@ EOT;
         if ( $tests_pos !== false ) {
             return $this->should_include_tests = true;
         }
-        
+
         return false;
     }
 
@@ -810,7 +810,7 @@ class Template {
         return <<<EOT
     public function test_{$test}()
     {
-        \$response = Controller::call('{$class_name}@$test'); 
+        \$response = Controller::call('{$class_name}@$test');
         \$this->assertEquals('200', \$response->foundation->getStatusCode());
         \$this->assertRegExp('/.+/', (string)\$response, 'There should be some content in the $test view.');
     }
@@ -844,7 +844,7 @@ EOT;
 
     public static function schema($table_action, $table_name, $cb = true)
     {
-        $content = "Schema::$table_action('$table_name'";
+        $content = '/** @var \Laravel\Database\Schema\Table \$table **/'. "\nSchema::$table_action('$table_name'";
 
         return $cb
             ? $content . ', function($table) {});'
