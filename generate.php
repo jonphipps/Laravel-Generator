@@ -208,7 +208,7 @@ EOT;
         $class_name = array_shift($args);
 
         // Determine what the table name should be.
-        $table_name = $this->parse_table_name($class_name);
+        $table_name = $this->parse_table_name($class_name, strtolower("pivot") == $args[0]);
 
         // Capitalize where necessary: a_simple_string => A_Simple_String
         $class_name = implode('_', array_map('ucwords', explode('_', $class_name)));
@@ -442,9 +442,25 @@ EOT;
 
         // Create the field rules for for the schema
         if ( $table_event === 'create' ) {
-            $fields = $this->set_column('increments', 'id') . ';';
-            $fields .= $this->add_columns($args);
-            $fields .= $this->set_column('timestamps', null) . ';';
+
+            if ("pivot" == $args[0]) {
+                //get the models
+                $models = explode("_",$table_name);
+                //pivot must be the first element in the array, so we lose it
+                $args_temp = $args;
+                $args_temp[] = "$models[0]_id:integer:unsigned";
+                $args_temp[] = "$models[1]_id:integer:unsigned";
+                array_shift($args_temp);
+                $fields =  $this->set_column('increments', 'id') . ';';
+                $fields .= $this->add_columns($args_temp);
+                $fields .= $this->set_column('timestamps', null) . ';';
+                $fields .= $this->set_foreign_index($models[0] ) . ';';
+                $fields .= $this->set_foreign_index($models[1] ) . ';';
+            } else {
+                $fields = $this->set_column('increments', 'id') . ';';
+                $fields .= $this->add_columns($args);
+                $fields .= $this->set_column('timestamps', null) . ';';
+            }
         }
 
         else if ( $table_event === 'delete' ) {
@@ -467,8 +483,24 @@ EOT;
         if ( $table_event === 'create' ) {
            $schema = Template::schema('drop', $table_name, false);
 
-           // Add drop schema into down function
-           $down = $this->add_after('{', $schema, $down);
+            // Add drop schema into down function
+            $down = $this->add_after('{', $schema, $down);
+
+            //we have indexes to drop too
+            if ("pivot" == $args[0])
+            {
+                $schema = Template::schema('table', $table_name);
+
+                //get the models
+                $models = explode("_",$table_name);
+                $fields = $this->drop_foreign_index($table_name, $models[0]) . ';';
+                $fields .= $this->drop_foreign_index($table_name, $models[1]) . ';';
+
+                // add fields to schema
+                $schema = $this->add_after('function($table) {', $fields, $schema);
+                $down = $this->add_after('{', $schema . "\n", $down);
+            }
+
         } else {
             // for delete, add, and update
             $schema = Template::schema('table', $table_name);
@@ -565,24 +597,44 @@ EOT;
      * @param  $class_name string
      * @return string
      */
-    protected function parse_table_name($class_name)
+    protected function parse_table_name($class_name, $pivot = true)
     {
-        // Try to figure out the table name
-        // We'll use the word that comes immediately before "_table"
-        // create_users_table => users
-        preg_match('/([a-zA-Z]+)_table/', $class_name, $matches);
+        $models = explode("_", $class_name);
+        $table_name = '';
 
-        if ( empty($matches) ) {
-            // Or, if the user doesn't write "table", we'll just use
-            // the text at the end of the string
-            // create_users => users
-            preg_match('/_([a-zA-Z]+)$/', $class_name, $matches);
+        //let's see what we got..
+        //throw away 'create' if we have it
+        if ("create" == strtolower($models[0]));
+        {
+          array_shift($models);
+        }
+
+        //throw away 'table' if we have it on the end of the migration (we should)
+        if ("table" == strtolower($models[count($models) - 1]));
+        {
+            array_pop($models);
+        }
+
+        //it's a pivot table
+        if ($pivot)
+        {
+            //we need to check the count
+            if (2 != count($models))
+            {
+                echo "Error: You need to specify exactly 2 models for a pivot table.\n";
+                die();
+            }
+            //sort the elements
+            sort($models);
+
+            //make sure they're singular
+            return strtolower(Str::singular($models[0])) . "_" . strtolower(Str::singular($models[1]));
         }
 
         // Hmm - I'm stumped. Just use a generic name.
-        return empty($matches)
+        return !count($models)
             ? "TABLE"
-            : $matches[1];
+            : implode("_", $models);
     }
 
 
@@ -649,6 +701,18 @@ EOT;
             : "\$table->$type('$field')";
     }
 
+    protected function set_foreign_index($model, $on_delete = 'cascade', $on_update = 'cascade')
+    {
+        $table = strtolower(Str::plural($model));
+        $model_id = $model . "_id";
+        return "\$table->foreign('$model_id')->references('id')->on('$table')->on_delete('$on_delete')->on_update('$on_update')";
+    }
+
+    protected function drop_foreign_index($table, $model)
+    {
+        $name = $table . "_" . $model . "_id_foreign";
+        return "\$table->drop_foreign('$name')";
+    }
 
     protected function add_option($option)
     {
@@ -742,11 +806,13 @@ EOT;
         $content = str_replace('}}', "}\n\n}", $content);
 
         // Migration-Specific
+        $content = preg_replace('/\/\*\* @var/', "\n\t\t/** @var", $content);
         $content = preg_replace('/ ?Schema::/', "\n\t\tSchema::", $content);
         $content = preg_replace('/\$table(?!\))/', "\n\t\t\t\$table", $content);
         $content = str_replace('});}', "\n\t\t});\n\t}", $content);
         $content = str_replace(');}', ");\n\t}", $content);
         $content = str_replace("() {", "()\n\t{", $content);
+        $content = preg_replace('/\n\t\t\t\$table \*/', "\$table *", $content);
 
         self::$content = $content;
     }
@@ -844,7 +910,8 @@ EOT;
 
     public static function schema($table_action, $table_name, $cb = true)
     {
-        $content = '/** @var \Laravel\Database\Schema\Table \$table **/'. "\nSchema::$table_action('$table_name'";
+        $content  = $cb ? '/** @var \Laravel\Database\Schema\Table $table **/' : '';
+        $content .= "Schema::$table_action('$table_name'";
 
         return $cb
             ? $content . ', function($table) {});'

@@ -253,8 +253,73 @@ class Create_Users_Table
 
 }
 ```
-
 Sweet!
+
+#### Pivot Table Migrations
+
+Pivot tables are used by Laravel to maintain many-to-many relationships between models. Eloquent prefers that the tables be created with a particular naming convention: "[singular model name]_[singular model name]", with the model names in alphabetical order joined by an underscore. The table name relating a User model to a Role model would be `role_user` (no caps). 
+
+The structure of the tables also has a specific requirement that it reference the 'id' field of each of the linked models using the singular name of the model, so the table would contain a `user_id` field and a `role_id` field.
+
+That's all of the actual requirements, and the Generator will make an attempt to build the file correctly even if you give it slightly incorrect parameters. All you have to do is make the first option after your migration name `pivot`. After that you can go ahead and sepcify additional columns just as you would a normal table. The following will all create the same table in the proper format even though you might not have gotten the request quite right:
+```bash
+
+    php artisan generate:migration create_users_roles_table pivot 
+    php artisan generate:migration create_roles_users_table pivot
+    php artisan generate:migration create_User_role_table pivot
+    php artisan generate:migration create_users_roles_table pivot status:boolean 
+```
+
+Just make sure that the first option after migration instruction is `pivot`. You'll notice that the last command adds a boolean `status` field to the table. Fields can be added to the table just as you would for a non-pivot table as long as they follow the `pivot` option on the command line.
+
+As usual the Generator is a bit opinionated about a few things, so we're not through… 
+
+We add an auto-incrementing `id` field even though it's not strictly necessary; timestamps are expected in eloquent pivot tables by default, so we add those too; efficiency dictates that the linked `id` fields be indexed as foreign keys and that foreign key constraints be added to them, so we add those as well and set the `on_delete` and `on_update` constraints to `"cascade"` (note that if your database doesn't support foreign key constraints the indexes will be created but the constraints will be ignored). 
+
+So now we get (from that last command):
+
+```php
+<?php 
+    
+class Create_Users_Organizations_Table {
+
+	public function up()
+    {
+		/** @var \Laravel\Database\Schema\Table $table **/
+		Schema::create('organization_user', function($table) {
+			$table->increments('id');
+			$table->boolean('status');
+			$table->integer('organization_id')->unsigned();
+			$table->integer('user_id')->unsigned();
+			$table->timestamps();
+			$table->foreign('organization_id')->references('id')->on('organizations')
+			      ->on_delete('cascade')->on_update('cascade');
+			$table->foreign('user_id')->references('id')->on('users')
+			      ->on_delete('cascade')->on_update('cascade');
+	});
+
+    }
+
+	public function down()
+    {
+		/** @var \Laravel\Database\Schema\Table $table **/
+		Schema::table('organization_user', function($table) {
+			$table->drop_foreign('organization_user_organization_id_foreign');
+			$table->drop_foreign('organization_user_user_id_foreign');
+	});
+
+		/** @var \Laravel\Database\Schema\Table $table **/
+		Schema::drop('organization_user');
+    }
+}
+```
+
+So the table has been properly named in the singular, even if the plural has been used to define it (thank you Laravel `Str` class) with the models in the proper alphabetical order, the related id keys are created as unsigned integers as required, and indexes with constraints are created. Everything is nicely dropped, including the indexes, when rolling back the migration.
+
+Cool!
+
+Of course, anything that you don't want can be easily deleted before you run your migration.
+
 
 #### Keywords
 
