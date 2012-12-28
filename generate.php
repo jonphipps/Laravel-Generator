@@ -208,7 +208,8 @@ EOT;
         $class_name = array_shift($args);
 
         // Determine what the table name should be.
-        $table_name = $this->parse_table_name($class_name, strtolower("pivot") == $args[0]);
+        $pivot = isset($args[0]) ? strtolower("pivot") == $args[0] : false;
+        $table_name = $this->parse_table_name($class_name, $pivot);
 
         // Capitalize where necessary: a_simple_string => A_Simple_String
         $class_name = implode('_', array_map('ucwords', explode('_', $class_name)));
@@ -412,7 +413,7 @@ EOT;
      * @param  $args array
      * @return void
      */
-    protected function generate_migration($class_name, $table_name, $args)
+    protected function generate_migration($class_name, $table_name, $args = '')
     {
         // Figure out what type of event is occuring. Create, Delete, Add?
         list($table_action, $table_event) = $this->parse_action_type($class_name);
@@ -440,10 +441,10 @@ EOT;
         // Insert a new schema function into the up function.
         $up = $this->add_after('{', Template::schema($table_action, $table_name), $up);
 
-        // Create the field rules for for the schema
+        // Create the field rules for the schema
         if ( $table_event === 'create' ) {
 
-            if ("pivot" == $args[0]) {
+            if (isset($args[0]) && "pivot" == $args[0]) {
                 //get the models
                 $models = explode("_",$table_name);
                 //pivot must be the first element in the array, so we lose it
@@ -487,7 +488,7 @@ EOT;
             $down = $this->add_after('{', $schema, $down);
 
             //we have indexes to drop too
-            if ("pivot" == $args[0])
+            if (isset($args[0]) && "pivot" == $args[0])
             {
                 $schema = Template::schema('table', $table_name);
 
@@ -599,28 +600,23 @@ EOT;
      */
     protected function parse_table_name($class_name, $pivot = true)
     {
-        $models = explode("_", $class_name);
+        $models     = explode("_", $class_name);
         $table_name = '';
 
-        //let's see what we got..
-        //throw away 'create' if we have it
-        if ("create" == strtolower($models[0]));
-        {
-          array_shift($models);
-        }
+        $action = strtolower($models[0]);
+
+        //throw away the action
+        array_shift($models);
 
         //throw away 'table' if we have it on the end of the migration (we should)
-        if ("table" == strtolower($models[count($models) - 1]));
-        {
+        if ("table" === strtolower($models[count($models) - 1])) {
             array_pop($models);
         }
 
         //it's a pivot table
-        if ($pivot)
-        {
+        if ($pivot) {
             //we need to check the count
-            if (2 != count($models))
-            {
+            if (2 != count($models)) {
                 echo "Error: You need to specify exactly 2 models for a pivot table.\n";
                 die();
             }
@@ -631,12 +627,9 @@ EOT;
             return strtolower(Str::singular($models[0])) . "_" . strtolower(Str::singular($models[1]));
         }
 
-        // Hmm - I'm stumped. Just use a generic name.
-        return !count($models)
-            ? "TABLE"
-            : implode("_", $models);
+        // Hmm - I'm stumped. Just use a generic name or return the last model element
+        return !count($models) ? "TABLE" : strtolower($models[count($models) - 1]);
     }
-
 
     /**
      * Write the contents to the specified file
