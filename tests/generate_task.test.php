@@ -325,7 +325,7 @@ class Generate_Test extends PHPUnit_Framework_TestCase
 		$this->assertFileExists("$js_path/main.js");
 
 		$content = File::get("$js_path/jquery.js");
-		$this->assertContains('jQuery JavaScript Library v1.8.1', $content);
+        $this->assertContains('jQuery JavaScript Library v1.8.3', $content);
 
 		$content = File::get("$js_path/main.js");
 		$this->assertEquals('', $content);
