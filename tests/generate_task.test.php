@@ -9,6 +9,18 @@ class Generate_Test extends PHPUnit_Framework_TestCase
     public static $migration;
     public static $view;
 
+    public static function setUpBeforeClass()
+    {
+        if (File::latest(path('app') . 'models') ||
+            File::latest(path('app') . 'migrations') ||
+            File::latest(path('app') . 'controllers') ||
+            File::latest(path('app') . 'tests/controllers') ||
+            File::latest(path('public') . 'css') ||
+            File::latest(path('public') . 'js'))
+        {
+            die("TEST PATHS ARE NOT EMPTY!\n\nDO NOT run this test on a live laravel instance!\nIt cleans out several application paths\n\n");
+        }
+    }
 
     public function setup()
     {
