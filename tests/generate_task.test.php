@@ -355,6 +355,7 @@ class Generate_Test extends PHPUnit_Framework_TestCase
 	{
 		ob_end_clean();
 
+        File::delete(path('app') . 'tests/user.test.php');
 		File::delete(path('app') . 'controllers/admin.php');
 		File::cleandir(path('app') . 'models');
 		File::cleandir(path('app') . 'migrations');
